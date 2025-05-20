@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>モールス信号風変換ツール（Λ区切り＋半角変換）</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    textarea { width: 100%; height: 100px; margin-bottom: 10px; }
+    button { margin: 5px 0; }
+    .section { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>モールス信号風変換ツール</h1>
+
+  <div class="section">
+    <h3>① テキスト → モールス風コード（Λ区切り）</h3>
+    <textarea id="inputText" placeholder="テキストを入力してください"></textarea>
+    <button onclick="encodeText()">変換</button>
+    <textarea id="morseOutput" readonly placeholder="モールス風コードが表示されます"></textarea>
+  </div>
+
+  <div class="section">
+    <h3>② モールス風コード → テキスト復元</h3>
+    <textarea id="morseInput" placeholder="モールス風コードを貼り付けてください（Λ区切り）"></textarea>
+    <button onclick="decodeText()">復元</button>
+    <textarea id="decodedOutput" readonly placeholder="復元されたテキストが表示されます"></textarea>
+  </div>
+
+  <script>
+    const morseMap = {
+      '0': '.',
+      '1': '-',
+      '2': '..',
+      '3': '.-',
+      '4': '-.',
+      '5': '--',
+      '6': '...'
+    };
+
+    const reverseMorseMap = Object.fromEntries(
+      Object.entries(morseMap).map(([k, v]) => [v, k])
+    );
+
+    function toHalfWidth(str) {
+      return str.replace(/[\uFF01-\uFF5E]/g, ch =>
+        String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)
+      ).replace(/\u3000/g, ' ');
+    }
+
+    function toBase7(n) {
+      return n.toString(7);
+    }
+
+    function fromBase7(s) {
+      return parseInt(s, 7);
+    }
+
+    function encodeText() {
+      const inputRaw = document.getElementById('inputText').value;
+      const input = toHalfWidth(inputRaw);
+      let result = [];
+
+      for (let ch of input) {
+        const code = ch.codePointAt(0);
+        const base7 = toBase7(code);
+        const morseParts = [...base7].map(d => morseMap[d]);
+        result.push(morseParts.join(' '));
+      }
+
+      document.getElementById('morseOutput').value = result.join(' Λ ');
+    }
+
+    function decodeText() {
+      const input = document.getElementById('morseInput').value.trim();
+      if (!input) return;
+
+      const chars = input.split('Λ').map(part => part.trim());
+      let result = '';
+
+      for (let morseChar of chars) {
+        if (!morseChar) continue;
+
+        const symbols = morseChar.split(' ').map(s => s.trim()).filter(Boolean);
+        const digits = [];
+
+        for (let symbol of symbols) {
+          if (!(symbol in reverseMorseMap)) {
+            alert("無効なモールス記号が含まれています: " + symbol);
+            return;
+          }
+          digits.push(reverseMorseMap[symbol]);
+        }
+
+        const base7 = digits.join('');
+        const codePoint = fromBase7(base7);
+        result += String.fromCodePoint(codePoint);
+      }
+
+      document.getElementById('decodedOutput').value = result;
+    }
+  </script>
+</body>
+</html>
